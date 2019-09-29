@@ -2,11 +2,14 @@
 import { mount, createLocalVue } from '@vue/test-utils'
 import RegisterPage from '@/views/RegisterPage'
 import VueRouter from 'vue-router'
+import Vuelidate from 'vuelidate'
+import registrationService from '@/services/registration'
 
 // Adding Vue Router to the test so that
 // we can access vm.$router
 const localVue = createLocalVue()
 localVue.use(VueRouter)
+localVue.use(Vuelidate)
 const router = new VueRouter()
 
 // Mock dependency registrationService
@@ -18,6 +21,7 @@ describe('RegisterPage.vue', () => {
   let fieldEmailAddress
   let fieldPassword
   let buttonSubmit
+  let registerSpy
 
   beforeEach(() => {
     wrapper = mount(RegisterPage, {
@@ -28,9 +32,12 @@ describe('RegisterPage.vue', () => {
     fieldEmailAddress = wrapper.find('#emailAddress')
     fieldPassword = wrapper.find('#password')
     buttonSubmit = wrapper.find('form button[type="submit"]')
+    registerSpy = jest.spyOn(registrationService, 'register')
   })
 
-  afterAll(() => {
+  afterEach(() => {
+    registerSpy.mockReset()
+    registerSpy.mockRestore()
     jest.restoreAllMocks()
   })
 
@@ -85,25 +92,53 @@ describe('RegisterPage.vue', () => {
     expect(stub).toBeCalled()
   })
 
-  it('should register when it is a new user', () => {
+  it('should register when it is a new user', async () => {
+    expect.assertions(2)
     const stub = jest.fn()
     wrapper.vm.$router.push = stub
     wrapper.vm.form.username = 'sunny'
-    wrapper.vm.form.emailAddress = 'sunny@local'
-    wrapper.vm.form.password = 'sun!'
+    wrapper.vm.form.emailAddress = 'sunny@taskagile.com'
+    wrapper.vm.form.password = 'sunnndy'
     wrapper.vm.submitForm()
-    wrapper.vm.$nextTick(() => {
-      expect(stub).toHaveBeenCalledWith({ name: 'LoginPage' })
-    })
+    expect(registerSpy).toBeCalled()
+    await wrapper.vm.$nextTick()
+    expect(stub).toHaveBeenCalledWith({ name: 'LoginPage' })
   })
 
-  it('should fail it is not a new user', () => {
+  it('should fail it is not a new user', async () => {
+    expect.assertions(3)
     // In the mock, only sunny@local is new user
-    wrapper.vm.form.emailAddress = 'ted@local'
+    wrapper.vm.form.username = 'ted'
+    wrapper.vm.form.emailAddress = 'ted@taskagile.com'
+    wrapper.vm.form.password = 'tedpwd!'
     expect(wrapper.find('.failed').isVisible()).toBe(false)
     wrapper.vm.submitForm()
-    wrapper.vm.$nextTick(null, () => {
-      expect(wrapper.find('.failed').isVisible()).toBe(true)
-    })
+    expect(registerSpy).toBeCalled()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.failed').isVisible()).toBe(true)
+  })
+
+  it('should fail when email address is invalid', () => {
+    wrapper.vm.form.username = 'ted'
+    wrapper.vm.form.emailAddress = 'bad-email-address'
+    wrapper.vm.form.password = 'sdfsfff'
+    wrapper.vm.submitForm()
+    expect(registerSpy).not.toHaveBeenCalled()
+  })
+
+  it('should fail when the username is invalid', () => {
+    wrapper.vm.form.emailAddress = 'ted@hotmail.com'
+    wrapper.vm.form.username = 'bad-username'
+    wrapper.vm.form.password = 'sdfsfsf'
+    wrapper.vm.submitForm()
+    expect(registerSpy).not.toHaveBeenCalled()
+  })
+
+  it('should fail when the password is invalid', () => {
+    wrapper.vm.form.emailAddress = 'ted@hotmail.com'
+    wrapper.vm.form.password = 'pwd'
+    wrapper.vm.form.username = 'ted'
+    wrapper.vm.submitForm()
+    expect(registerSpy).not.toHaveBeenCalled()
   })
 })
