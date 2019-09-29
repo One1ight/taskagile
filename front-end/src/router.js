@@ -12,7 +12,7 @@ export default new Router({
     path: '/login',
     name: 'LoginPage',
     component: LoginPage
-  },{
+  }, {
     path: '/register',
     name: 'RegisterPage',
     component: RegisterPage
